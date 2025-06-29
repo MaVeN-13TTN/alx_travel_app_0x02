@@ -16,4 +16,10 @@ router.register(r"reviews", views.ReviewViewSet)
 
 urlpatterns = [
     path("", include(router.urls)),
+    path(
+        "bookings/<int:booking_id>/pay/",
+        views.InitiatePaymentView.as_view(),
+        name="initiate-payment",
+    ),
+    path("payments/verify/", views.VerifyPaymentView.as_view(), name="verify-payment"),
 ]

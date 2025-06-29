@@ -1,402 +1,120 @@
-# 🏨 ALX Travel App - Milestone 3: API Development
+# 🏨 ALX Travel App - Milestone 4: Payment Integration
 
-A **production-ready Django REST API** for a travel listing platform implementing comprehensive ViewSets, RESTful endpoints, and interactive API documentation. This milestone focuses on creating robust API views for managing listings and bookings with full CRUD operations.
+This milestone integrates the Chapa Payment Gateway into the ALX Travel App, enabling secure, seamless transactions for bookings. The implementation includes API endpoints for initiating and verifying payments, asynchronous email notifications, and robust error handling.
 
 [![Django Version](https://img.shields.io/badge/Django-5.2.1-green.svg)](https://djangoproject.com/)
 [![Python Version](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org/)
 [![DRF Version](https://img.shields.io/badge/DRF-3.16.0-orange.svg)](https://www.django-rest-framework.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-## 🎯 Milestone 3 Objectives
-
-**Primary Goal**: Build API views to manage listings and bookings, and ensure the endpoints are documented with Swagger.
-
-### ✅ **Requirements Completed**
-
-1. **✅ Project Duplication**: Successfully duplicated `alx_travel_app_0x00` to `alx_travel_app_0x01`
-2. **✅ ViewSets Creation**: Implemented ModelViewSet classes for all models
-3. **✅ URL Configuration**: Router-based RESTful URL patterns
-4. **✅ Endpoint Testing**: Comprehensive CRUD operation testing
-5. **✅ Swagger Documentation**: Complete API documentation with interactive testing
+[![Chapa](https://img.shields.io/badge/Payment-Chapa-purple)](https://chapa.co/)
 
 ---
 
-## 🚀 API Implementation Overview
+## 🎯 Milestone 4 Objectives
 
-### **ViewSets Architecture**
+**Primary Goal**: Integrate the Chapa API to handle all payment processing for bookings, from initiation to verification and confirmation.
 
-This project implements Django REST Framework's `ModelViewSet` pattern, providing automatic CRUD operations with advanced features:
+### ✅ **Key Features Implemented**
 
-```python
-# Core ViewSets in listings/views.py
-
-class ListingViewSet(viewsets.ModelViewSet):
-    """Complete listing management with filtering and search"""
-
-class BookingViewSet(viewsets.ModelViewSet):
-    """Secure booking operations with user authentication"""
-
-class ReviewViewSet(viewsets.ModelViewSet):
-    """Review system with ownership-based permissions"""
-
-class AmenityViewSet(viewsets.ReadOnlyModelViewSet):
-    """Read-only amenity catalog"""
-```
-
-### **RESTful URL Structure**
-
-All endpoints follow REST conventions using Django REST Framework's `DefaultRouter`:
-
-```python
-# listings/urls.py
-router = DefaultRouter()
-router.register(r"listings", views.ListingViewSet)
-router.register(r"bookings", views.BookingViewSet)
-router.register(r"reviews", views.ReviewViewSet)
-router.register(r"amenities", views.AmenityViewSet)
-```
+1.  **✅ Chapa API Integration**: Securely process payments using the `chapa-python` library.
+2.  **✅ Payment Model**: A dedicated `Payment` model in the database to track transaction status, amount, and reference IDs.
+3.  **✅ Payment Initiation Endpoint**: An API endpoint to start a transaction and generate a Chapa checkout URL.
+4.  **✅ Payment Verification Webhook**: A webhook to receive and verify payment status updates from Chapa in real-time.
+5.  **✅ Asynchronous Email Confirmation**: Celery task to send users a confirmation email upon successful payment without blocking the API response.
 
 ---
 
-## 📊 API Endpoints Reference
+## 🚀 Payment Workflow
 
-### **🏠 Listings API** (`/api/listings/`)
+The payment process follows these steps:
 
-| Method   | Endpoint                  | Description                             | Authentication |
-| -------- | ------------------------- | --------------------------------------- | -------------- |
-| `GET`    | `/api/listings/`          | List all listings with filtering/search | Public         |
-| `POST`   | `/api/listings/`          | Create new listing                      | Required       |
-| `GET`    | `/api/listings/{slug}/`   | Retrieve specific listing               | Public         |
-| `PUT`    | `/api/listings/{slug}/`   | Update listing                          | Required       |
-| `DELETE` | `/api/listings/{slug}/`   | Delete listing                          | Required       |
-| `GET`    | `/api/listings/featured/` | Get featured listings                   | Public         |
-
-**Filtering Options:**
-
-- `listing_type`: hotel, apartment, villa, resort, hostel
-- `location`: Filter by city/location
-- `max_guests`: Minimum guest capacity
-- `bedrooms`: Number of bedrooms
-- `is_available`: Availability status
-- `search`: Full-text search across title, description, location
-
-### **📝 Bookings API** (`/api/bookings/`)
-
-| Method   | Endpoint                     | Description               | Authentication |
-| -------- | ---------------------------- | ------------------------- | -------------- |
-| `GET`    | `/api/bookings/`             | List user's bookings      | Required       |
-| `POST`   | `/api/bookings/`             | Create new booking        | Required       |
-| `GET`    | `/api/bookings/{id}/`        | Retrieve specific booking | Required       |
-| `PUT`    | `/api/bookings/{id}/`        | Update booking            | Required       |
-| `DELETE` | `/api/bookings/{id}/`        | Cancel booking            | Required       |
-| `GET`    | `/api/bookings/my_bookings/` | Current user's bookings   | Required       |
-| `GET`    | `/api/bookings/upcoming/`    | Upcoming bookings         | Required       |
-
-**Security Features:**
-
-- Users can only access their own bookings
-- Staff users can access all bookings
-- Automatic user assignment on creation
-
-### **⭐ Reviews API** (`/api/reviews/`)
-
-| Method   | Endpoint                   | Description              | Authentication |
-| -------- | -------------------------- | ------------------------ | -------------- |
-| `GET`    | `/api/reviews/`            | List all reviews         | Public         |
-| `POST`   | `/api/reviews/`            | Create new review        | Required       |
-| `GET`    | `/api/reviews/{id}/`       | Retrieve specific review | Public         |
-| `PUT`    | `/api/reviews/{id}/`       | Update review (own only) | Required       |
-| `DELETE` | `/api/reviews/{id}/`       | Delete review (own only) | Required       |
-| `GET`    | `/api/reviews/my_reviews/` | Current user's reviews   | Required       |
-| `GET`    | `/api/reviews/top_rated/`  | 5-star reviews           | Public         |
-
-### **🔧 Amenities API** (`/api/amenities/`)
-
-| Method | Endpoint               | Description               | Authentication |
-| ------ | ---------------------- | ------------------------- | -------------- |
-| `GET`  | `/api/amenities/`      | List all amenities        | Public         |
-| `GET`  | `/api/amenities/{id}/` | Retrieve specific amenity | Public         |
+1.  **Create a Booking**: A user first creates a booking for a listing via a `POST` request to `/api/bookings/`.
+2.  **Initiate Payment**: The user then makes a `POST` request to `/api/bookings/{booking_id}/pay/`.
+3.  **Redirect to Chapa**: The API returns a `checkout_url`. The user is redirected to this URL to complete the payment on Chapa's secure page.
+4.  **Payment Verification**: Upon completion, Chapa sends a notification to our webhook (`/api/payments/verify/`). The system verifies the transaction status with Chapa.
+5.  **Update Status & Send Email**: If the payment was successful, the booking and payment status are updated to `completed`, and a confirmation email is sent to the user.
 
 ---
 
-## 📖 API Documentation
+## 📊 API Endpoints for Payment
 
-### **Interactive Documentation**
+### **Primary Endpoints**
 
-- **Swagger UI**: [http://localhost:8000/swagger/](http://localhost:8000/swagger/)
-- **ReDoc**: [http://localhost:8000/redoc/](http://localhost:8000/redoc/)
-- **Browsable API**: [http://localhost:8000/api/](http://localhost:8000/api/)
+| Method | Endpoint                       | Description                     | Authentication |
+| :--- | :----------------------------- | :------------------------------ | :--- |
+| `POST` | `/api/bookings/{booking_id}/pay/` | Initiate payment for a booking. | Required       |
+| `GET`  | `/api/payments/verify/`        | Verify payment (Chapa callback) | Public         |
 
-### **Documentation Features**
+### **Prerequisite Endpoint**
 
-✅ **Interactive Testing**: Test all endpoints directly from the browser  
-✅ **Request/Response Schemas**: Complete API specifications  
-✅ **Authentication Support**: Built-in token authentication testing  
-✅ **Example Requests**: Sample data for all operations  
-✅ **Error Responses**: Documented error codes and messages
-
----
-
-## 🧪 Testing & Validation
-
-### **Automated Test Results**
-
-```bash
-🚀 ALX Travel App - API Testing Script
-==================================================
-🏠 Testing Listings API...
-✅ GET /api/listings/ - Found 10 listings
-✅ GET /api/listings/luxury-beachfront-villa/ - Retrieved listing details
-✅ GET /api/listings/featured/ - Found 5 featured listings
-
-🔧 Testing Amenities API...
-✅ GET /api/amenities/ - Found 10 amenities
-✅ GET /api/amenities/1/ - Retrieved amenity details
-
-⭐ Testing Reviews API...
-✅ GET /api/reviews/ - Found 14 reviews
-✅ GET /api/reviews/top_rated/ - Found 4 top rated reviews
-
-📝 Testing Bookings API...
-✅ Authentication properly enforced (403 status)
-
-🔍 Testing API Filtering...
-✅ Filter by listing_type=hotel - Found 3 hotels
-✅ Search for "beach" - Found 1 beach listings
-
-📖 Testing API Documentation...
-✅ Swagger UI - Accessible and functional
-✅ ReDoc - Accessible and functional
-```
-
-### **Test Coverage**
-
-- **✅ CRUD Operations**: All Create, Read, Update, Delete operations tested
-- **✅ Authentication**: Proper security enforcement verified
-- **✅ Filtering**: Advanced filtering capabilities confirmed
-- **✅ Search**: Full-text search functionality working
-- **✅ Custom Actions**: All custom endpoints tested
-- **✅ Documentation**: Interactive docs fully accessible
+| Method | Endpoint         | Description                         | Authentication |
+| :--- | :--------------- |:------------------------------------| :--- |
+| `POST` | `/api/bookings/` | Creates a booking to be paid for. | Required       |
 
 ---
 
-## 🚀 Quick Start Guide
+## ⚙️ Setup and Testing Guide
 
 ### **1. Environment Setup**
+
+**Important: Chapa API Key**
+
+Create a `.env` file in the project root (`alx_travel_app_0x02/.env`) and add your Chapa Test Secret Key:
+
+```bash
+# .env
+CHAPA_SECRET_KEY=YOUR_CHAPA_TEST_SECRET_KEY
+```
+
+### **2. Install Dependencies**
+
+Ensure all required packages, including `chapa-python`, are installed:
 
 ```bash
 # Activate virtual environment
 source venv/bin/activate
 
-# Start Django development server
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### **3. Run the Application**
+
+You need to run two services in separate terminals: the Django development server and the Celery worker.
+
+```bash
+# Terminal 1: Start Django development server
 python manage.py runserver
 ```
 
-### **2. API Testing**
-
 ```bash
-# Run comprehensive API tests
-python test_api.py
-
-# Run API demonstration
-python demo_api.py
+# Terminal 2: Start Celery worker
+celery -A alx_travel_app worker -l info
 ```
 
-### **3. Sample API Calls**
-
-```bash
-# Get all listings
-curl http://localhost:8000/api/listings/
-
-# Get specific listing by slug
-curl http://localhost:8000/api/listings/luxury-beachfront-villa/
-
-# Filter hotels only
-curl "http://localhost:8000/api/listings/?listing_type=hotel"
-
-# Search for beach properties
-curl "http://localhost:8000/api/listings/?search=beach"
-
-# Get all amenities
-curl http://localhost:8000/api/amenities/
-
-# Get reviews
-curl http://localhost:8000/api/reviews/
-```
-
-### **4. Authentication Required Examples**
-
-```bash
-# Create booking (requires authentication token)
-curl -X POST http://localhost:8000/api/bookings/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Token YOUR_TOKEN_HERE" \
-  -d '{
-    "listing_id": 1,
-    "check_in_date": "2025-07-01",
-    "check_out_date": "2025-07-05",
-    "num_guests": 2
-  }'
-
-# Create review (requires authentication token)
-curl -X POST http://localhost:8000/api/reviews/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Token YOUR_TOKEN_HERE" \
-  -d '{
-    "listing_id": 1,
-    "rating": 5,
-    "comment": "Amazing property with great amenities!"
-  }'
-```
-
----
-
-## 🏗️ Technical Architecture
-
-### **ViewSet Implementation Details**
-
-#### **ListingViewSet**
-
-- **Base Class**: `ModelViewSet` (full CRUD)
-- **Lookup Field**: `slug` for SEO-friendly URLs
-- **Permissions**: `IsAuthenticatedOrReadOnly`
-- **Filtering**: Type, location, availability, capacity
-- **Search Fields**: Title, description, location, address
-- **Custom Actions**: `featured()` for homepage listings
-
-#### **BookingViewSet**
-
-- **Base Class**: `ModelViewSet` (full CRUD)
-- **Permissions**: `IsAuthenticated` (login required)
-- **Queryset Filtering**: User-specific for non-staff users
-- **Auto-assignment**: Current user set on creation
-- **Custom Actions**: `my_bookings()`, `upcoming()`
-
-#### **ReviewViewSet**
-
-- **Base Class**: `ModelViewSet` (full CRUD)
-- **Permissions**: `IsAuthenticatedOrReadOnly`
-- **Ownership Control**: Users can only edit own reviews
-- **Custom Actions**: `my_reviews()`, `top_rated()`
-
-#### **AmenityViewSet**
-
-- **Base Class**: `ReadOnlyModelViewSet` (GET only)
-- **Purpose**: Reference data for listings
-- **Permissions**: Public access
-
-### **URL Routing Architecture**
-
+### **4. Configure Email (Optional)**
+For email confirmations to be sent, configure your email backend in `alx_travel_app/settings.py`. For development, you can use the console backend to print emails to the terminal:
 ```python
-# Main project URLs (alx_travel_app/urls.py)
-urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("api/", include("listings.urls")),           # API endpoints
-    path("swagger/", SchemaView.with_ui("swagger")),  # Interactive docs
-    path("redoc/", SchemaView.with_ui("redoc")),      # Alternative docs
-]
-
-# App URLs (listings/urls.py)
-router = DefaultRouter()
-router.register(r"listings", views.ListingViewSet)
-router.register(r"bookings", views.BookingViewSet)
-router.register(r"reviews", views.ReviewViewSet)
-router.register(r"amenities", views.AmenityViewSet)
-
-urlpatterns = [
-    path("", include(router.urls)),
-]
+# alx_travel_app/settings.py
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 ```
 
 ---
 
-## 🔧 Advanced Features
+## 📸 Payment Flow Demonstration (Required)
 
-### **Filtering & Search Capabilities**
+_Please replace the placeholders below with screenshots or logs that demonstrate a successful payment initiation, verification, and the resulting status update in the `Payment` model._
 
-- **DjangoFilterBackend**: Field-based filtering
-- **SearchFilter**: Full-text search across multiple fields
-- **OrderingFilter**: Sortable results
-- **Custom Filter Sets**: Advanced filtering logic
+**(Placeholder for Screenshot 1: Initiating Payment)**
+*Description: A screenshot of an API client (e.g., Postman) showing the `checkout_url` received after a `POST` request to `/api/bookings/{id}/pay/`.*
 
-### **Authentication & Permissions**
+**(Placeholder for Screenshot 2: Chapa Payment Page)**
+*Description: A screenshot of the user being redirected to the Chapa checkout page.*
 
-- **Token Authentication**: Secure API access
-- **Permission Classes**: Granular access control
-- **User-based Filtering**: Data isolation for non-staff users
-- **Ownership Validation**: Users can only modify own content
+**(Placeholder for Screenshot 3: Successful Verification Log)**
+*Description: A log from the Celery worker or Django server showing the payment was successfully verified and the confirmation email task was triggered.*
 
-### **Custom Actions**
+**(Placeholder for Screenshot 4: Database Record Updated)**
+*Description: A screenshot of the `Payment` table in the database (e.g., in DBeaver or Django admin), showing the record with a `completed` status.*
 
-- **Method Decorators**: `@action(detail=False, methods=['get'])`
-- **URL Patterns**: Auto-generated custom endpoint URLs
-- **Response Handling**: Consistent API response format
-- **Permission Inheritance**: Custom actions inherit ViewSet permissions
-
----
-
-## 📁 Project Structure
-
-```
-alx_travel_app_0x01/
-├── listings/
-│   ├── views.py          # ViewSet implementations
-│   ├── urls.py           # Router configuration
-│   ├── serializers.py    # API serializers
-│   ├── models.py         # Database models
-│   └── ...
-├── alx_travel_app/
-│   ├── urls.py           # Main URL configuration
-│   ├── settings.py       # Django settings
-│   └── ...
-├── test_api.py           # Automated API testing
-├── demo_api.py           # API demonstration script
-├── requirements.txt      # Python dependencies
-└── README.md            # This documentation
-```
-
----
-
-## 🎉 Milestone 3 Completion Status
-
-### **✅ All Requirements Met**
-
-| Requirement           | Status      | Implementation                                |
-| --------------------- | ----------- | --------------------------------------------- |
-| Duplicate Project     | ✅ Complete | `alx_travel_app_0x00` → `alx_travel_app_0x01` |
-| Create ViewSets       | ✅ Complete | 4 ViewSets with full CRUD operations          |
-| Configure URLs        | ✅ Complete | RESTful router-based configuration            |
-| Test Endpoints        | ✅ Complete | All CRUD operations tested and verified       |
-| Swagger Documentation | ✅ Complete | Interactive API docs accessible               |
-
-### **📊 Implementation Statistics**
-
-- **4 ViewSets**: Complete API coverage for all models
-- **20+ Endpoints**: RESTful CRUD operations
-- **10 Custom Actions**: Specialized functionality
-- **100% Test Coverage**: All endpoints tested and working
-- **Security Enforced**: Authentication properly implemented
-- **Documentation Complete**: Swagger UI and ReDoc accessible
-
-### **🌐 Access Points**
-
-- **API Root**: http://localhost:8000/api/
-- **Swagger Documentation**: http://localhost:8000/swagger/
-- **ReDoc Documentation**: http://localhost:8000/redoc/
-- **Django Admin**: http://localhost:8000/admin/
-
----
-
-## 🏆 Key Achievements
-
-✅ **Production-Ready API**: Comprehensive REST API with industry standards  
-✅ **Complete CRUD Operations**: Full Create, Read, Update, Delete functionality  
-✅ **Advanced Filtering**: Multiple filter options and full-text search  
-✅ **Secure Authentication**: Token-based API security  
-✅ **Interactive Documentation**: Swagger UI for easy testing and integration  
-✅ **Automated Testing**: Comprehensive test suite with 100% success rate  
-✅ **RESTful Design**: Following REST conventions and best practices
-
-**Milestone 3 Status: 🎯 COMPLETED SUCCESSFULLY** ✅
-
-The ALX Travel App now provides a complete, production-ready REST API suitable for frontend integration, mobile app development, or third-party integrations. All endpoints are fully documented, tested, and ready for production deployment.
+**(Placeholder for Screenshot 5: Confirmation Email in Console)**
+*Description: A screenshot of the terminal running the Django server, showing the confirmation email content printed to the console.*

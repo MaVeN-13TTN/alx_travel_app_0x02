@@ -5,7 +5,15 @@ This module contains the DRF serializers for travel listings and amenities.
 """
 
 from rest_framework import serializers
-from .models import Listing, ListingImage, Amenity, ListingAmenity, Booking, Review
+from .models import (
+    Listing,
+    ListingImage,
+    Amenity,
+    ListingAmenity,
+    Booking,
+    Review,
+    Payment,
+)
 from django.contrib.auth.models import User
 
 
@@ -96,3 +104,9 @@ class ReviewSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "user", "created_at", "updated_at"]
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = "__all__"
